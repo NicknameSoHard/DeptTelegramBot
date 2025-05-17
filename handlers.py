@@ -41,10 +41,14 @@ async def cmd_start(message_or_cb, state: FSMContext = None):
 async def handle_add_start(callback: types.CallbackQuery):
     people = storage.get_people()
     if not people:
-        return await callback.message.edit_text(
-            "Нет ни одного должника.",
-            reply_markup=back_to_main_menu_button()
+        markup = types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [types.InlineKeyboardButton(text="➕ Новый должник", callback_data="new_person")],
+                [types.InlineKeyboardButton(text="🔙 Назад", callback_data="start")]
+            ]
         )
+        return await callback.message.edit_text("Нет ни одного должника.\nХочешь добавить нового?", reply_markup=markup)
+
     buttons = [[types.InlineKeyboardButton(text=name, callback_data=f"add_person:{name}")] for name in people]
     buttons.append([types.InlineKeyboardButton(text="➕ Новый", callback_data="new_person")])
     markup = types.InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -80,9 +84,15 @@ async def process_operation(message: types.Message, state: FSMContext):
     amount, reason = result
     storage.add_operation(person, amount, reason)
     total = storage.get_total(person)
+    buttons = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [types.InlineKeyboardButton(text="🔁 Добавить ещё", callback_data=f"add_person:{person}")],
+            [types.InlineKeyboardButton(text="🔙 Назад", callback_data="start")]
+        ]
+    )
     await message.answer(
         f"✅ Добавлено {amount} для {person}. Причина: {reason or '—'}.\nТекущий долг: {total}",
-        reply_markup=back_to_main_menu_button()
+        reply_markup=buttons
     )
     await state.clear()
 
@@ -103,10 +113,8 @@ async def show_summary(callback: types.CallbackQuery):
     markup = types.InlineKeyboardMarkup(inline_keyboard=buttons + [[types.InlineKeyboardButton(text="🔙 Назад", callback_data="start")]])
     await callback.message.answer(f"💰 {name}.\nТекущий долг: {total}", reply_markup=markup)
 
-@router.callback_query(F.data.startswith("view_ops:"))
-async def view_operations(callback: types.CallbackQuery):
-    _, name, page_str = callback.data.split(":")
-    page = int(page_str)
+
+async def show_operations_page(message: types.Message, name: str, page: int):
     ops = storage.get_operations(name)
     total_pages = (len(ops) - 1) // 10 + 1 if ops else 1
     ops_slice = list(enumerate(ops[page * 10: (page + 1) * 10], start=page * 10))
@@ -117,7 +125,7 @@ async def view_operations(callback: types.CallbackQuery):
         ts = op["timestamp"].split("T")[0]
         amt = op["amount"]
         reason = op["reason"] or "—"
-        text += f"{ts} | {amt:>6} | {reason}"
+        text += f"{ts} | {amt:>6} | {reason}\n"
         keyboard.append([
             types.InlineKeyboardButton(
                 text=f"❌ Удалить {amt} ({reason[:10]})",
@@ -135,12 +143,21 @@ async def view_operations(callback: types.CallbackQuery):
     keyboard.append([types.InlineKeyboardButton(text="🔙 Назад", callback_data="start")])
 
     markup = types.InlineKeyboardMarkup(inline_keyboard=keyboard)
-    await callback.message.edit_text(text, reply_markup=markup)
+    await message.edit_text(text, reply_markup=markup)
+
+
+@router.callback_query(F.data.startswith("view_ops:"))
+async def view_operations(callback: types.CallbackQuery):
+    _, name, page_str = callback.data.split(":", 2)
+    await show_operations_page(callback.message, name, int(page_str))
+
 
 @router.callback_query(F.data.startswith("del_op:"))
 async def delete_operation(callback: types.CallbackQuery):
-    _, name, idx_str, page_str = callback.data.split(":")
+    _, name, idx_str, page_str = callback.data.split(":", 3)
     index = int(idx_str)
+    page = int(page_str)
+
     ops = storage.get_operations(name)
     if 0 <= index < len(ops):
         amount = ops[index]["amount"]
@@ -148,4 +165,5 @@ async def delete_operation(callback: types.CallbackQuery):
         await callback.answer(f"Удалена операция на {amount}")
     else:
         await callback.answer("Операция не найдена", show_alert=True)
-    await view_operations(callback)
+
+    await show_operations_page(callback.message, name, page)
