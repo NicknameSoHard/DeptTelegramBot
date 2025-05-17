@@ -16,11 +16,8 @@ lint:
 	mypy $(CODE)
 	black --target-version py39 --skip-string-normalization --check $(CODE)
 
-run:
-	docker-compose up --build
+up:
+	docker-compose up -d
 
-stop:
-	docker-compose down
-
-clean:
+down:
 	docker-compose down -v
