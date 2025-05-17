@@ -54,3 +54,5 @@ class DebtStorage:
             del self.data[name]['operations'][index]
             self.data[name]['total'] -= amount
             self._save()
+
+storage = DebtStorage()

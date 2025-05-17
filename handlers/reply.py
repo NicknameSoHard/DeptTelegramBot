@@ -13,18 +13,17 @@ storage = DebtStorage()
 class DebtStates(StatesGroup):
     awaiting_new_person = State()
     awaiting_operation = State()
+    awaiting_history_person = State()
 
 async def send_main_menu(message: types.Message, state: FSMContext):
     await state.clear()
     await message.answer("Привет! Что хочешь сделать?", reply_markup=create_main_keyboard())
-
 
 @router.message(CommandStart())
 async def cmd_start(message: types.Message, state: FSMContext):
     if message.from_user.id != 123456789:
         return await message.answer("У вас нет доступа к этому боту.")
     await send_main_menu(message, state)
-
 
 @router.message(F.text == Btn.ADD.value)
 async def handle_add(message: types.Message, state: FSMContext):
@@ -35,7 +34,6 @@ async def handle_add(message: types.Message, state: FSMContext):
     else:
         await message.answer("Выбери должника или создай нового:", reply_markup=create_names_keyboard(people))
         await state.set_state(DebtStates.awaiting_new_person)
-
 
 @router.message(DebtStates.awaiting_new_person, F.text)
 async def save_or_select_person(message: types.Message, state: FSMContext):
@@ -53,7 +51,6 @@ async def save_or_select_person(message: types.Message, state: FSMContext):
             reply_markup=create_back_keyboard()
         )
         await state.set_state(DebtStates.awaiting_operation)
-
 
 @router.message(DebtStates.awaiting_operation, F.text)
 async def process_operation(message: types.Message, state: FSMContext):
@@ -79,3 +76,12 @@ async def process_operation(message: types.Message, state: FSMContext):
         reply_markup=create_main_keyboard()
     )
     await state.clear()
+
+@router.message(F.text == Btn.SHOW.value)
+async def handle_show(message: types.Message):
+    people = storage.get_people()
+    if not people:
+        return await message.answer("Нет ни одного должника.")
+    buttons = [[types.InlineKeyboardButton(text=name, callback_data=f"history:{name}:0")] for name in people]
+    markup = types.InlineKeyboardMarkup(inline_keyboard=buttons)
+    await message.answer("Выбери должника для просмотра:", reply_markup=markup)
