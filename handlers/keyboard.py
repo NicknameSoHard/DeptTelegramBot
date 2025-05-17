@@ -5,7 +5,10 @@ from enums import Btn
 
 def create_main_keyboard():
     return types.ReplyKeyboardMarkup(
-        keyboard=[[types.KeyboardButton(text=Btn.ADD.value), types.KeyboardButton(text=Btn.SHOW.value)]],
+        keyboard=[
+            [types.KeyboardButton(text=Btn.ADD.value),  types.KeyboardButton(text=Btn.SHOW.value)],
+            [types.KeyboardButton(text=Btn.EXPORT.value)],
+        ],
         resize_keyboard=True
     )
 

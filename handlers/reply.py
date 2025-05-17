@@ -87,3 +87,11 @@ async def handle_show(message: types.Message):
     buttons = [[types.InlineKeyboardButton(text=name, callback_data=f'history:{name}:0')] for name in people]
     markup = types.InlineKeyboardMarkup(inline_keyboard=buttons)
     await message.answer('Выбери должника для просмотра:', reply_markup=markup)
+
+
+@router.message(F.text == Btn.EXPORT.value)
+async def handle_export_file(message: types.Message):
+    file_path = storage.get_debts_file_path()
+    if not file_path:
+        return await message.answer("Файл с долгами пока не создан.")
+    await message.answer_document(types.FSInputFile(file_path), caption="📎 Текущие долги")

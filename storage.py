@@ -57,4 +57,7 @@ class DebtStorage:
             self.data[name]['total'] -= amount
             self._save()
 
+    def get_debts_file_path(self) -> str:
+        return self.file_path
+
 storage = DebtStorage()
