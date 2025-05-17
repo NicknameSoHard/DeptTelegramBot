@@ -21,12 +21,91 @@ def main_reply_keyboard():
         resize_keyboard=True
     )
 
-async def send_main_menu(target: types.Message | types.CallbackQuery, state: FSMContext):
-    if isinstance(target, types.CallbackQuery):
-        await target.message.delete()
-        target = target.message
+def reply_keyboard_with_names(names: list[str]) -> types.ReplyKeyboardMarkup:
+    rows = [names[i:i+2] for i in range(0, len(names), 2)]
+    rows.append(["➕ Новый", "🔙 Назад"])
+    return types.ReplyKeyboardMarkup(
+        keyboard=[[types.KeyboardButton(text=name) for name in row] for row in rows],
+        resize_keyboard=True
+    )
+
+def reply_keyboard_back_only():
+    return types.ReplyKeyboardMarkup(
+        keyboard=[[types.KeyboardButton(text="🔙 Назад")]],
+        resize_keyboard=True
+    )
+
+async def send_main_menu(message: types.Message, state: FSMContext):
     await state.clear()
-    await target.answer("Привет! Что хочешь сделать?", reply_markup=main_reply_keyboard())
+    await message.answer("Привет! Что хочешь сделать?", reply_markup=main_reply_keyboard())
+
+@router.message(CommandStart())
+async def cmd_start(message: types.Message, state: FSMContext):
+    if message.from_user.id != OWNER_ID:
+        return await message.answer("У вас нет доступа к этому боту.")
+    await send_main_menu(message, state)
+
+@router.message(F.text == "➕ Добавить")
+async def handle_add(message: types.Message, state: FSMContext):
+    people = storage.get_people()
+    if not people:
+        await message.answer("У тебя пока нет должников. Введи имя нового:")
+        await state.set_state(DebtStates.awaiting_new_person)
+    else:
+        await message.answer("Выбери должника или создай нового:", reply_markup=reply_keyboard_with_names(people))
+        await state.set_state(DebtStates.awaiting_new_person)
+
+@router.message(DebtStates.awaiting_new_person, F.text)
+async def save_or_select_person(message: types.Message, state: FSMContext):
+    name = message.text.strip()
+    if name == "🔙 Назад":
+        return await send_main_menu(message, state)
+    elif name == "➕ Новый":
+        await message.answer("Введи имя нового должника:")
+        return
+    else:
+        storage.add_person(name)
+        await state.update_data(current_person=name)
+        await message.answer(
+            f"Выбран {name}. Теперь введи операцию в виде `+100 еда +200 чай`",
+            reply_markup=reply_keyboard_back_only()
+        )
+        await state.set_state(DebtStates.awaiting_operation)
+
+@router.message(DebtStates.awaiting_operation, F.text)
+async def process_operation(message: types.Message, state: FSMContext):
+    if message.text.strip() == "🔙 Назад":
+        return await send_main_menu(message, state)
+
+    operations = parse_operations(message.text)
+    if not operations:
+        return await message.answer("Не понял ни одной операции. Пример: `+100 еда +200 чай`")
+
+    data = await state.get_data()
+    person = data["current_person"]
+
+    messages = []
+    for amount, reason in operations:
+        storage.add_operation(person, amount, reason)
+        messages.append(f"{amount:+} — {reason or '—'}")
+
+    total = storage.get_total(person)
+    await message.answer(
+        f"✅ Добавлены операции:" +
+        "\n".join(messages) +
+        f"\n\nТекущий долг: {total}",
+        reply_markup=main_reply_keyboard()
+    )
+    await state.clear()
+
+@router.message(F.text == "📊 Показать текущее")
+async def show_history_menu(message: types.Message):
+    people = storage.get_people()
+    if not people:
+        return await message.answer("Нет ни одного должника.")
+    buttons = [[types.InlineKeyboardButton(text=name, callback_data=f"history:{name}:0")] for name in people]
+    markup = types.InlineKeyboardMarkup(inline_keyboard=buttons)
+    await message.answer("Выбери должника для просмотра:", reply_markup=markup)
 
 async def render_history_page(name: str, page: int, message: types.Message):
     ops = storage.get_operations(name)
@@ -58,66 +137,6 @@ async def render_history_page(name: str, page: int, message: types.Message):
     markup = types.InlineKeyboardMarkup(inline_keyboard=buttons)
     await message.edit_text(text, reply_markup=markup)
 
-async def ask_person_from_user(message: types.Message, prompt: str, callback_prefix: str):
-    people = storage.get_people()
-    if not people:
-        return await message.answer("Нет ни одного должника.", reply_markup=main_reply_keyboard())
-    buttons = [[types.InlineKeyboardButton(text=name, callback_data=f"{callback_prefix}:{name}:0")] for name in people]
-    markup = types.InlineKeyboardMarkup(inline_keyboard=buttons)
-    await message.answer(prompt, reply_markup=markup)
-
-@router.message(CommandStart())
-async def cmd_start(message: types.Message, state: FSMContext):
-    if message.from_user.id != OWNER_ID:
-        return await message.answer("У вас нет доступа к этому боту.")
-    await send_main_menu(message, state)
-
-@router.message(F.text == "➕ Добавить")
-async def handle_add(message: types.Message, state: FSMContext):
-    people = storage.get_people()
-    if not people:
-        await message.answer("У тебя пока нет должников. Введи имя нового:")
-        await state.set_state(DebtStates.awaiting_new_person)
-    else:
-        names = "\n".join(people)
-        await message.answer(f"Введи имя должника (или новое):\n{names}")
-        await state.set_state(DebtStates.awaiting_new_person)
-
-@router.message(DebtStates.awaiting_new_person, F.text)
-async def save_or_select_person(message: types.Message, state: FSMContext):
-    name = message.text.strip()
-    storage.add_person(name)
-    await state.update_data(current_person=name)
-    await message.answer(f"Добавлен {name}. Теперь введи операцию в виде `+100 еда +200 чай`")
-    await state.set_state(DebtStates.awaiting_operation)
-
-@router.message(DebtStates.awaiting_operation, F.text)
-async def process_operation(message: types.Message, state: FSMContext):
-    operations = parse_operations(message.text)
-    if not operations:
-        return await message.answer("Не понял ни одной операции. Пример: `+100 еда +200 чай`")
-
-    data = await state.get_data()
-    person = data["current_person"]
-
-    messages = []
-    for amount, reason in operations:
-        storage.add_operation(person, amount, reason)
-        messages.append(f"{amount:+} — {reason or '—'}")
-
-    total = storage.get_total(person)
-    await message.answer(
-        f"✅ Добавлены операции:" +
-        "\n".join(messages) +
-        f"\n\nТекущий долг: {total}",
-        reply_markup=main_reply_keyboard()
-    )
-    await state.clear()
-
-@router.message(F.text == "📊 Показать текущее")
-async def start_history_view(message: types.Message):
-    await ask_person_from_user(message, "Выбери должника для просмотра:", "history")
-
 @router.callback_query(F.data.startswith("history:"))
 async def view_history(callback: types.CallbackQuery):
     _, name, page = callback.data.split(":")
@@ -134,4 +153,5 @@ async def delete_op(callback: types.CallbackQuery):
 
 @router.callback_query(F.data == "back_to_menu")
 async def back_to_menu(callback: types.CallbackQuery, state: FSMContext):
-    await send_main_menu(callback, state)
+    await callback.message.delete()
+    await send_main_menu(callback.message, state)
