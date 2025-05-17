@@ -15,3 +15,12 @@ lint:
 	pylint --jobs $(JOBS) --rcfile=setup.cfg $(CODE)
 	mypy $(CODE)
 	black --target-version py39 --skip-string-normalization --check $(CODE)
+
+run:
+	docker-compose up --build
+
+stop:
+	docker-compose down
+
+clean:
+	docker-compose down -v
