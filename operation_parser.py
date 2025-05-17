@@ -10,7 +10,7 @@ def parse_operations(text: str):
 
     result = []
     for sign, num, multiplier, reason in matches:
-        amount = float(num.replace(",", "."))
+        amount = float(num.replace(',', '.'))
         if multiplier.lower() == 'к':
             amount *= 1000
         amount = int(amount)
