@@ -7,12 +7,21 @@ class DebtStorage:
     def __init__(self, file_path='data/debts.json'):
         self.file_path = file_path
         self.data: Dict[str, Dict] = {}
+        self._ensure_path()
         self._load()
 
+    def _ensure_path(self):
+        os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
+        if not os.path.exists(self.file_path):
+            with open(self.file_path, 'w', encoding='utf-8') as f:
+                json.dump({}, f)
+
     def _load(self):
-        if os.path.exists(self.file_path):
+        try:
             with open(self.file_path, 'r', encoding='utf-8') as f:
                 self.data = json.load(f)
+        except (IOError, json.JSONDecodeError):
+            self.data = {}
 
     def _save(self):
         with open(self.file_path, 'w', encoding='utf-8') as f:
