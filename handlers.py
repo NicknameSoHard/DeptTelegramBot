@@ -3,7 +3,7 @@ from aiogram.filters import CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from storage import DebtStorage
-from operation_parser import parse_operation
+from operation_parser import parse_operations
 from config import OWNER_ID
 
 router = Router()
@@ -76,24 +76,37 @@ async def ask_for_operation(callback: types.CallbackQuery, state: FSMContext):
 
 @router.message(StateFilter(DebtStates.awaiting_operation), F.text)
 async def process_operation(message: types.Message, state: FSMContext):
+    operations = parse_operations(message.text)
+    if not operations:
+        return await message.answer(
+            "Не понял ни одной операции. Пример: `+100 еда +200 на чай`",
+            reply_markup=back_to_main_menu_button()
+        )
+
     data = await state.get_data()
     person = data["current_person"]
-    result = parse_operation(message.text)
-    if not result:
-        return await message.answer("Не понял операцию. Пример: `+100 за еду`. Попробуй ещё раз.", reply_markup=back_to_main_menu_button())
-    amount, reason = result
-    storage.add_operation(person, amount, reason)
+
+    messages = []
+    for amount, reason in operations:
+        storage.add_operation(person, amount, reason)
+        messages.append(f"{amount:+} — {reason or '—'}")
+
     total = storage.get_total(person)
+
     buttons = types.InlineKeyboardMarkup(
         inline_keyboard=[
             [types.InlineKeyboardButton(text="🔁 Добавить ещё", callback_data=f"add_person:{person}")],
             [types.InlineKeyboardButton(text="🔙 Назад", callback_data="start")]
         ]
     )
+
     await message.answer(
-        f"✅ Добавлено {amount} для {person}. Причина: {reason or '—'}.\nТекущий долг: {total}",
+        f"✅ Добавлены операции:\n" +
+        "\n".join(messages) +
+        f"\n\nТекущий долг: {total}",
         reply_markup=buttons
     )
+
     await state.clear()
 
 @router.callback_query(F.data == "show")

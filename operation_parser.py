@@ -1,20 +1,23 @@
 import re
 
 
-def parse_operation(text: str):
-    pattern = r'([+-]?)\s*(\d+(?:[.,]?\d+)?)([кK]?)\s*(.*)?'
-    match = re.match(pattern, text.strip())
-    if not match:
-        return None
+def parse_operations(text: str):
+    # Убираем стартовое число без знака, если оно есть
+    if re.match(r'^\s*\d+[кK]?', text):
+        text = '+' + text.lstrip()
 
-    sign, number, multiplier, reason = match.groups()
-    amount = float(number.replace(',', '.'))
+    # Основной парсинг: ищем группы "+ 100 причина" / "-1.2к лекарства"
+    pattern = r'([+-])\s*(\d+(?:[.,]?\d+)?)([кК]?)\s*([^\+\-]*)'
+    matches = re.findall(pattern, text)
 
-    if multiplier.lower() == 'к':
-        amount *= 1000
+    result = []
+    for sign, num, multiplier, reason in matches:
+        amount = float(num.replace(",", "."))
+        if multiplier.lower() == 'к':
+            amount *= 1000
+        amount = int(amount)
+        if sign == '-':
+            amount = -amount
+        result.append((amount, reason.strip()))
 
-    amount = int(amount)
-    if sign == '-':
-        amount = -amount
-
-    return amount, reason.strip()
+    return result if result else None
