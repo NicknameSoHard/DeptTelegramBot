@@ -3,7 +3,7 @@ version: '3.8'
 services:
   bot:
     build: .
-    restart: true
+    restart: "always"
     volumes:
       - ./data:/app/data
     env_file:
