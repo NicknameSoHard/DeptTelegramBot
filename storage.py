@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 from typing import Dict, List
 
+
 class DebtStorage:
     def __init__(self, file_path='data/debts.json'):
         self.file_path = file_path

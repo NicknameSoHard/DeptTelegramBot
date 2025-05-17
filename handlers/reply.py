@@ -1,14 +1,16 @@
-from aiogram import Router, types, F
+from aiogram import F, Router, types
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+
+from config import OWNER_ID
 from enums import Btn
-from handlers.keyboard import create_main_keyboard, create_names_keyboard, create_back_keyboard
-from storage import DebtStorage
+from handlers.keyboard import (create_back_keyboard, create_main_keyboard,
+                               create_names_keyboard)
 from operation_parser import parse_operations
+from storage import storage
 
 router = Router()
-storage = DebtStorage()
 
 class DebtStates(StatesGroup):
     awaiting_new_person = State()
@@ -21,7 +23,7 @@ async def send_main_menu(message: types.Message, state: FSMContext):
 
 @router.message(CommandStart())
 async def cmd_start(message: types.Message, state: FSMContext):
-    if message.from_user.id != 123456789:
+    if message.from_user.id != OWNER_ID:
         return await message.answer("У вас нет доступа к этому боту.")
     await send_main_menu(message, state)
 

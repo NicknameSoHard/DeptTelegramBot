@@ -1,5 +1,7 @@
 from aiogram import types
+
 from enums import Btn
+
 
 def create_main_keyboard():
     return types.ReplyKeyboardMarkup(

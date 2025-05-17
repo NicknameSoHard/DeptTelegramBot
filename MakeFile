@@ -1,4 +1,17 @@
+CODE = ./.
 
 install:
-	pip install poetry
-	poetry install --no-root
+	pip install poetry==1.2.1
+	poetry install
+
+format:
+	autoflake --recursive --in-place --remove-all-unused-imports $(CODE)
+	isort $(CODE)
+	black --target-version py39 --skip-string-normalization $(CODE)
+	unify --in-place --recursive $(CODE) $(TEST) $(TOOLS)
+
+lint:
+	flake8 --jobs $(JOBS) --statistics --show-source $(CODE)
+	pylint --jobs $(JOBS) --rcfile=setup.cfg $(CODE)
+	mypy $(CODE)
+	black --target-version py39 --skip-string-normalization --check $(CODE)

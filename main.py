@@ -2,9 +2,10 @@ import asyncio
 
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
+
 from config import BOT_TOKEN
-from handlers.reply import router as reply_router
 from handlers.inline import router as inline_router
+from handlers.reply import router as reply_router
 
 
 async def main():

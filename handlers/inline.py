@@ -1,5 +1,6 @@
-from aiogram import Router, types, F
+from aiogram import F, Router, types
 from aiogram.fsm.context import FSMContext
+
 from enums import Btn
 from storage import storage
 

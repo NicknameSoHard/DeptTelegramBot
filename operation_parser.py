@@ -1,5 +1,6 @@
 import re
 
+
 def parse_operations(text: str):
     if re.match(r'^\s*\d+[кK]?', text):
         text = '+' + text.lstrip()
