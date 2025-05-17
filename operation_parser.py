@@ -1,13 +1,10 @@
 import re
 
-
 def parse_operations(text: str):
-    # Убираем стартовое число без знака, если оно есть
     if re.match(r'^\s*\d+[кK]?', text):
         text = '+' + text.lstrip()
 
-    # Основной парсинг: ищем группы "+ 100 причина" / "-1.2к лекарства"
-    pattern = r'([+-])\s*(\d+(?:[.,]?\d+)?)([кК]?)\s*([^\+\-]*)'
+    pattern = r'([+-])\s*(\d+(?:[.,]?\d+)?)([кК]?)\s*([^+-]*)'
     matches = re.findall(pattern, text)
 
     result = []
