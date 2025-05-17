@@ -1,7 +1,8 @@
-from typing import Dict, List
-from datetime import datetime
 import json
 import os
+from datetime import datetime
+from typing import Dict, List
+
 
 class DebtStorage:
     def __init__(self, file_path='data/debts.json'):
@@ -37,7 +38,7 @@ class DebtStorage:
 
     def add_operation(self, name: str, amount: int, reason: str = ''):
         now = datetime.now().isoformat()
-        op = {"amount": amount, "reason": reason, "timestamp": now}
+        op = {'amount': amount, 'reason': reason, 'timestamp': now}
         self.data[name]['operations'].append(op)
         self.data[name]['total'] += amount
         self._save()
@@ -54,3 +55,5 @@ class DebtStorage:
             del self.data[name]['operations'][index]
             self.data[name]['total'] -= amount
             self._save()
+
+storage = DebtStorage()

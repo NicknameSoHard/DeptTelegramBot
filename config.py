@@ -1,2 +1,4 @@
-BOT_TOKEN = "7230125288:AAGIgFowVFfY9cMMomCkECD8kR6dpciW778"
-OWNER_ID = 415444293
+import os
+
+BOT_TOKEN = os.environ.get('BOT_TOKEN')
+OWNER_ID = int(os.environ.get('OWNER_ID', '0'))
