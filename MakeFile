@@ -21,3 +21,11 @@ up:
 
 down:
 	docker-compose down -v
+
+clean-for-docker:
+	rm -rf !(docker-compose.yml|data|.env|MakeFile)
+
+update-version:
+	git clone https://github.com/NicknameSoHard/DeptTelegramBot.git
+	cp -rf ./DeptTelegramBot/* ./
+	rm -rf ./DeptTelegramBot/

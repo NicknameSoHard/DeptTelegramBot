@@ -40,6 +40,7 @@ class DebtStorage:
         now = datetime.now().isoformat()
         op = {'amount': amount, 'reason': reason, 'timestamp': now}
         self.data[name]['operations'].append(op)
+        self.data[name]['operations'].sort(key=lambda x: x['timestamp'], reverse=True)
         self.data[name]['total'] += amount
         self._save()
 
